@@ -11,10 +11,12 @@ import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
     // Members
-    private val IDLE_TIME = 200 //temps mínim entre sacsejades
+    private val IDLE_TIME = 200 //temps mínim entre sacsejades (ms)
+    val SENSIBILITY = 2 // sensibilitat del sensor
     private var sensorManager: SensorManager? = null //gestor de sensors
     private var colorFlag = false //per canviar color
     private var lastUpdate: Long = 0 //per control de temps mínim entre sacsejades
+
     // Views
     private lateinit var tvInstructions: TextView //per instruccions i canvi de color
 
@@ -39,10 +41,26 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     //sobreescriu els mètodes del SensorEventListener
     override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
+
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
             getAccelerometer(event)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Registra aquesta classe com a listener dels sensors d'accelereració
+        sensorManager!!.registerListener(
+            this, sensorManager!!.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
+            SensorManager.SENSOR_DELAY_NORMAL
+        )
+    }
+
+    override fun onPause() {
+        // desregistra el listener quan passa a segon pla
+        super.onPause()
+        sensorManager!!.unregisterListener(this)
     }
 
     //Si hi ha algun canvi en els sensors registrats, es cridarà aquest mètode
@@ -53,12 +71,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         val x = values[0]
         val y = values[1]
         val z = values[2]
-        val accelationSquareRoot = ((x * x + y * y + z * z)
+        val normalizedAcceleration = ((x * x + y * y + z * z)
                 / (SensorManager.GRAVITY_EARTH * SensorManager.GRAVITY_EARTH))
         val actualTime = System.currentTimeMillis()
         //Per testejar valors
         //Toast.makeText(getApplicationContext(),String.valueOf(accelationSquareRoot)+" "+ SensorManager.GRAVITY_EARTH,Toast.LENGTH_SHORT).show();
-        if (accelationSquareRoot >= 2) //s'esecutarà si es sacseja
+        if (normalizedAcceleration >= SENSIBILITY) //s'esecutarà si es sacseja un mínim
         {
             //Si fa poc temps dels darrer canvi no fem res
             if (actualTime - lastUpdate < IDLE_TIME) {
@@ -78,21 +96,5 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         } else {
             tvInstructions.setBackgroundColor(Color.RED)
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Registra aquesta classe com a listener per l'orientació i
-        // els sensors d'accelereració
-        sensorManager!!.registerListener(
-            this, sensorManager!!.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
-            SensorManager.SENSOR_DELAY_NORMAL
-        )
-    }
-
-    override fun onPause() {
-        // desregistra el listener quan passa a segon pla
-        super.onPause()
-        sensorManager!!.unregisterListener(this)
     }
 }
